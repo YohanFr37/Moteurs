@@ -2,6 +2,7 @@
 #include <vector>
 #include <tuple>
 #include <iostream>
+#include <cmath>
 
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
@@ -9,7 +10,7 @@
 #endif
 
 using namespace std;
-vector<vector<float>> v1, f;
+vector<vector<float>> v, f;
 void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color)
 {
     // 1er
@@ -151,7 +152,7 @@ void parserfile(const int width, const int height, TGAImage framebuffer)
                     // std::cout << temp.at(i) << std::endl;
                     // tableautVecteur[i][nbVecteur] = std::stof(token);
                 }
-                v1.push_back(temp);
+                v.push_back(temp);
                 nbVecteur++;
             }
 
@@ -178,24 +179,40 @@ void parserfile(const int width, const int height, TGAImage framebuffer)
     }
 }
 
-void triangleColoriage(int xA, int xB, int xC, int yA, int yB, int yC, TGAImage &framebuffer)
+// Fonction coloriant l'intérieur du triangle
+void triangleColoriage(vector<int> v1,vector<int> v2,vector<int> v3, vector<float> vAl, vector<float> vBl, vector<float> vCl, TGAImage &framebuffer)
 {
-    const int a = xA;
-    const TGAColor alea = {std::rand()%255, std::rand()%255, std::rand()%255, 255};
+    const TGAColor alea = {std::uint8_t(rand() % 255), std::uint8_t(rand() % 255), std::uint8_t(rand() % 255), 255};
     const TGAColor blue = {0, 0, 255, 255};
     const TGAColor red = {255, 0, 0, 255};
     const TGAColor cyan = {255, 255, 0, 255};
+    const TGAColor white = {255, 255, 255, 255};
     const TGAColor green = {0, 255, 0, 255};
-    vector<int> vA, vB, vC, vP;
-    vA.push_back(xA);
-    vA.push_back(yA);
-    vB.push_back(xB);
-    vB.push_back(yB);
-    vC.push_back(xC);
-    vC.push_back(yC);
-    if (yA>yB) std::swap(vA, vB);
-    if (yA>yC) std::swap(vA, vC);
-    if (yB>yC) std::swap(vB, vC);
+    //vA = v1, vB = v2, vC = v3
+    vector<int> vA = v1, vB = v2, vC = v3, vP;
+    vector<int> vAB = {vA[0] - vB[0],vA[1] - vB[1]}, vBC = {vB[0] - vC[0],vB[1] - vC[1]}, vAC = {vA[0] - vC[0],vA[1] - vC[1]};
+    //Vecteurs pour la lumière
+    vector<float> N = {(vBl[1] - vAl[1]) * (vCl[2] - vAl[2]) -  (vBl[2] - vAl[2]) * (vCl[1] - vAl[1]),
+   - (vBl[0] - vAl[0]) * (vCl[2] - vAl[2]) + (vBl[2] - vAl[2]) * (vCl[0] - vAl[0]),
+   (vBl[0] - vAl[0]) * (vCl[1] - vAl[1]) - (vBl[1] - vAl[1]) * (vCl[0] - vAl[0])   };
+    vector<float> lum = {0,0,-1};
+    if (v1[1] > v2[1])
+        std::swap(vA, vB);
+    if (v1[1] > v3[1])
+        std::swap(vA, vC);
+    if (v2[1] > v3[1])
+        std::swap(vB, vC);
+    
+    //Produit scalaire
+    float normeN = sqrtf(N[0] * N[0] + N[1] * N[1] + N[2] * N[2]);
+    float normeLim = sqrtf(lum[0] * lum[0] + lum[1] * lum[1] + lum[2] * lum[2]);
+    float scalaireNLim = N[0] * lum[0] + N[1] * lum[1] + N[2] * lum[2];
+    const int intensiteB = (scalaireNLim / normeN * normeLim) * 255;
+    const std::uint8_t intensite = -(scalaireNLim / normeN * normeLim) * 255;
+
+    const TGAColor back = {intensite, intensite, intensite, 255};
+    //std::cout << " normeN " << normeN << " normeLim " << normeLim << " scalaireNLim " << scalaireNLim << " intensiteB " << intensiteB << std::endl;
+    //std::cout << " vCt[0] " << vCt[0] << " vCt[1] " << vCt[1] << " vCt[2] " << vCt[2] << " N[0] " << N[0] << " N[1] " << N[1] << " N[2] " << N[2] << " lum[0] " << lum[0] << " lum[1] " << lum[1] << " lum[2] " << lum[2] << std::endl;
     int minX = std::min({vA[0], vB[0], vC[0]});
     int maxX = std::max({vA[0], vB[0], vC[0]});
     int minY = std::min({vA[1], vB[1], vC[1]});
@@ -206,66 +223,49 @@ void triangleColoriage(int xA, int xB, int xC, int yA, int yB, int yC, TGAImage 
         {
             vP.push_back(i);
             vP.push_back(j);
-            float alpha, beta, gamma;
-            vector<int> vPA, vPB, vPC;
-            vPA.push_back(vP[0] - vA[0]);
-            vPA.push_back(vP[1] - vA[1]);
-            vPB.push_back(vP[0] - vB[0]);
-            vPB.push_back(vP[1] - vB[1]);
-            vPC.push_back(vP[0] - vC[0]);
-            vPC.push_back(vP[1] - vC[1]);
-            alpha = vPB[0] * vPC[1] - vPB[1] * vPC[0];
-            beta = vPC[0] * vPA[1] - vPC[1] * vPA[0];
-            gamma = vPA[0] * vPB[1] - vPA[1] * vPB[0];
-            /*std::cout << " vA " << vA[0] << " " << vA[1] << std::endl;
-            std::cout << " vB " << vB[0] << " " << vB[1] << std::endl;
-            std::cout << " vC " << vC[0] << " " << vC[1] << std::endl;
-            std::cout << " ij " << i << " " << j << std::endl;
-            std::cout << " vP " << vP[0] << " " << vP[1] << std::endl;
-            std::cout << " vPA " << vPA[0] << " " << vPA[1] << std::endl;
-            std::cout << " vPB " << vPB[0] << " " << vPB[1] << std::endl;
-            std::cout << " vPC " << vPC[0] << " " << vPC[1] << std::endl;
-            std::cout << " alpha " << alpha << std::endl;
-            std::cout << " beta " << beta << std::endl;
-            std::cout << " gamma " << gamma << std::endl<< std::endl;*/
+            vector<int> vPA = {vP[0] - vA[0],vP[1] - vA[1]}, vPB = {vP[0] - vB[0],vP[1] - vB[1]}, vPC = {vP[0] - vC[0],vP[1] - vC[1]};
+            float alpha = vPB[0] * vPC[1] - vPB[1] * vPC[0];
+            float beta = vPC[0] * vPA[1] - vPC[1] * vPA[0];
+            float gamma = vPA[0] * vPB[1] - vPA[1] * vPB[0];
+            /*std::cout << " vA " << vA[0] << " " << vA[1] << std::endl;*/
             vP.clear();
-            if (alpha > 0 && beta > 0 && gamma > 0 || alpha < 0 && beta < 0 && gamma < 0)
-            {
-                framebuffer.set(i, j, red);
+            if (scalaireNLim < 0){
+                if (alpha > -0.01 && beta > -0.01 && gamma > -0.01 || alpha < 0.01 && beta < 0.01 && gamma < 0.01){
+                    framebuffer.set(i, j, back);
+                }
             }
         }
-    }    
+    }
 }
 
+// Fonction dessinant les segments du triangle
 void triangle(const int width, const int height, TGAImage &framebuffer)
 {
-    int a = rand() % 255;
-    const int b = a;
-    const int c = 3;
+    vector<int> vA, vB, vC;
     const TGAColor white = {255, 255, 255, 255};
     const TGAColor blue = {0, 0, 255, 255};
     const TGAColor red = {255, 0, 0, 255};
     const TGAColor green = {0, 255, 0, 255};
-    for (int i = 0; i <= f.size()-1; i++)
+    /*for (int i = 0; i <= f.size() - 1; i++)
     {
         int a = f[i][0] - 1;
         int b = f[i][1] - 1;
         int c = f[i][2] - 1;
-        int x1 = (v1[a][0] + 1.) * width / 2.; // Position x du premier sommet du triangle
-        int x2 = (v1[b][0] + 1.) * width / 2.; // Position y du premier sommet du triangle
-        int x3 = (v1[c][0] + 1.) * width / 2.; // Position x du deuxième sommet du triangle etc.
-        int y1 = (v1[a][1] + 1.) * height / 2.;
-        int y2 = (v1[b][1] + 1.) * height / 2.;
-        int y3 = (v1[c][1] + 1.) * height / 2.;
+        vector<int> v1 = {static_cast<int>((v[a][0] + 1) * width / 2),static_cast<int>((v[a][1] + 1) * height / 2)}; //Coordonnées x et y du premier sommet du triangle
+        vector<int> v2 = {static_cast<int>((v[b][0] + 1) * width / 2),static_cast<int>((v[b][1] + 1) * height / 2)};
+        vector<int> v3 = {static_cast<int>((v[c][0] + 1) * width / 2),static_cast<int>((v[c][1] + 1) * height / 2)};
+        vector<float> vA = v[a], vB = v[b], vC = v[c];
         // Co du centre de gravité du triangle
-        int xg = (x1 + x2 + x3) / 3;
-        int yg = (y1 + y2 + y3) / 3;
         // Trace les 3 lignes formant un triangle
-        line(x1, y1, x2, y2, framebuffer, white);
-        line(x1, y1, x3, y3, framebuffer, white);
-        line(x2, y2, x3, y3, framebuffer, white);
-        triangleColoriage(x1, x2, x3, y1, y2, y3, framebuffer);
-    }
+        //line(v1[0], v1[1], v2[0], v2[1], framebuffer, blue);
+        //line(v1[0], v1[1], v3[0], v3[1], framebuffer, white);
+        //line(v2[0], v2[1], v3[0], v3[1], framebuffer, red);
+        triangleColoriage(v1,v2,v3, vA, vB, vC, framebuffer);
+    }*/
+    line(20, 34, 744, 400, framebuffer, red);
+    line(120, 434,444, 400, framebuffer, green);
+    line(330, 463, 594, 200, framebuffer, blue);
+    line(10, 10, 790, 10, framebuffer, blue);
 }
 
 int main()
@@ -275,10 +275,9 @@ int main()
     const TGAColor white = {255, 255, 255, 255};
     const TGAColor green = {0, 255, 0, 255};
     TGAImage framebuffer(width, height, TGAImage::RGB);
-    
+
     parserfile(width, height, framebuffer);
     triangle(width, height, framebuffer);
     framebuffer.write_tga_file("framebuffer.tga");
-    // triangle(width, height, framebuffer);
     return 0;
 }
