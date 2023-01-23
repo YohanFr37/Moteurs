@@ -13,78 +13,6 @@ using namespace std;
 vector<vector<float>> v, f;
 void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color)
 {
-    // 1er
-    /*
-    for(float t = 0.; t < 1.; t+=.1){
-        //Coordonées barycentriques
-        int x = x0*(1.-t) + x1*t;
-        int y = y0*(1.-t) + y1*t;
-        image.set(x, y, color);
-    }
-     */
-    // 2eme
-    /*
-    for(int x=x0; x<=x1; x++){
-        float t = (x-x0)/static_cast<float>(x1-x0);
-        int y = y0 + (y1-y0)*t;
-        image.set(x, y, color);
-    }
-     */
-    // 3eme
-    /*
-    bool steep = false;
-    if(std::abs(x0-x1)<std::abs(y0-y1)){
-        std::swap(x0, y0);
-        std::swap(x1, y1);
-        steep = true;
-    }
-    if(x0>x1){
-        std::swap(x0, x1);
-        std::swap(y0, y1);
-    }
-
-    for(int x=x0; x<=x1; x++){
-        float t = (x-x0)/static_cast<float>(x1-x0);
-        int y = y0 + (y1-y0)*t;
-        if(steep){
-            image.set(x, y, color);
-        }
-        else{
-            image.set(y, x, color);
-        }
-    }
-     */
-    // 4eme il reset une division a opti
-    /*
-    bool steep = false;
-    if (std::abs(x0-x1)<std::abs(y0-y1)) {
-        std::swap(x0, y0);
-        std::swap(x1, y1);
-        steep = true;
-    }
-    if (x0>x1) {
-        std::swap(x0, x1);
-        std::swap(y0, y1);
-    }
-    int dx = x1-x0;
-    int dy = y1-y0;
-    float derror = std::abs(dy/float(dx));
-    float error = 0;
-    int y = y0;
-    for (int x=x0; x<=x1; x++) {
-        if (steep) {
-            image.set(y, x, color);
-        } else {
-            image.set(x, y, color);
-        }
-        error += derror;
-        if (error>.5) {
-            y += (y1>y0?1:-1);
-            error -= 1.;
-        }
-    }
-     */
-    // 5eme et dernier
     bool steep = false;
     if (std::abs(x0 - x1) < std::abs(y0 - y1))
     {
@@ -181,50 +109,62 @@ void parserfile(const int width, const int height, TGAImage framebuffer)
 
 void rasterize(vector<int> vA, vector<int> vB, TGAImage &framebuffer, TGAColor color, int ybuffer[])
 {
-    if (vA[0] > vB[0])
+    /*vector<float> bboxmin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+    vector<float> bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+    vector<int> taille(framebuffer.get_width() - 1, framebuffer.get_height() - 1);
+    for (int i = 0; i < 3; i++)
     {
-        std::swap(vA, vB);
-    }
-    for (int i = vA[0]; i <= vB[0]; i++)
-    {
-        float t = (i - vA[0]) / (float)(vB[0] - vA[0]);
-        int y = vA[1] * (1. - t) + vB[1] * t;
-        if (ybuffer[i] < y)
+        for (int j = 0; j < 2; j++)
         {
-            //std::cout << vA[0] << " ybuffer " << ybuffer[i] << " y " << y << std::endl;
-            ybuffer[i] = y;
-            //std::cout << vA[0] << " ybuffer " << ybuffer[i] << " y " << y << std::endl;
-            framebuffer.set(i, 11, color);
+            bboxmin[j] = std::max(0.f, std::min(bboxmin[j], pts[i][j]));
+            bboxmax[j] = std::min(clamp[j], std::max(bboxmax[j], pts[i][j]));
         }
     }
+    vector<float> P;
+    for (P.x = bboxmin[0]; P.x <= bboxmax[0]; P.x++)
+    {
+        for (P.y = bboxmin.y; P.y <= bboxmax.y; P.y++)
+        {
+            Vec3f bc_screen = barycentric(pts[0], pts[1], pts[2], P);
+            if (bc_screen.x < 0 || bc_screen.y < 0 || bc_screen.z < 0)
+                continue;
+            P.z = 0;
+            for (int i = 0; i < 3; i++)
+                P.z += pts[i][2] * bc_screen[i];
+            if (zbuffer[int(P.x + P.y * width)] < P.z)
+            {
+                zbuffer[int(P.x + P.y * width)] = P.z;
+                image.set(P.x, P.y, color);
+            }
+        }
+    }*/
 }
 // Fonction dessinant les segments du triangle
 void triangle(const int width, const int height, TGAImage &framebuffer)
 {
-    int ybuffer[width];
-    for (int i = 0; i < width; i++)
+    float zbuffer[width*height];
+    for (int i = 0; i < width*height; i++)
     {
-        ybuffer[i] = -1;
+        zbuffer[i] = -1;
     }
     const TGAColor white = {255, 255, 255, 255};
     const TGAColor blue = {0, 0, 255, 255};
     const TGAColor red = {255, 0, 0, 255};
     const TGAColor green = {0, 255, 0, 255};
-    vector<int> vA1 = {20, 34}, vA2 = {744, 400}, vB1 = {120, 434}, vB2 = {444, 400}, vC1 = {300, 463}, vC2 = {594, 200}, vD1 = {10, 10}, vD2 = {790, 10};
-
+    /*vector<int> vA1 = {20, 34}, vA2 = {744, 400}, vB1 = {120, 434}, vB2 = {444, 400}, vC1 = {300, 463}, vC2 = {594, 200}, vD1 = {10, 10}, vD2 = {790, 10};
     line(vA1[0], vA1[1], vA2[0], vA2[1], framebuffer, red);
     line(vB1[0], vB1[1], vB2[0], vB2[1], framebuffer, blue);
     line(vC1[0], vC1[1], vC2[0], vC2[1], framebuffer, green);
     rasterize(vA1, vA2, framebuffer, red, ybuffer);
     rasterize(vB1, vB2, framebuffer, blue, ybuffer);
-    rasterize(vC1, vC2, framebuffer, green, ybuffer);
-    for (int i = 0; i <= f.size() - 1; i++)
+    rasterize(vC1, vC2, framebuffer, green, ybuffer);*/
+    for (int h = 0; h <= f.size() - 1; h++)
     {
         const TGAColor alea = {std::uint8_t(rand() % 255), std::uint8_t(rand() % 255), std::uint8_t(rand() % 255), 255};
-        int a = f[i][0] - 1;
-        int b = f[i][1] - 1;
-        int c = f[i][2] - 1;
-        
+        int a = f[h][0] - 1;
+        int b = f[h][1] - 1;
+        int c = f[h][2] - 1;
+
         vector<int> vA = {static_cast<int>((v[a][0] + 1) * width / 2), static_cast<int>((v[a][1] + 1) * height / 2)}; // Coordonnées x et y du premier sommet du triangle
         vector<int> vB = {static_cast<int>((v[b][0] + 1) * width / 2), static_cast<int>((v[b][1] + 1) * height / 2)};
         vector<int> vC = {static_cast<int>((v[c][0] + 1) * width / 2), static_cast<int>((v[c][1] + 1) * height / 2)};
@@ -250,6 +190,7 @@ void triangle(const int width, const int height, TGAImage &framebuffer)
         {
             for (int j = minY; j <= maxY; j++)
             {
+                // Point P correspond à i et j
                 float alpha = (i - vB[0]) * (j - vC[1]) - (j - vB[1]) * (i - vC[0]);
                 float beta = (i - vC[0]) * (j - vA[1]) - (j - vC[1]) * (i - vA[0]);
                 float gamma = (i - vA[0]) * (j - vB[1]) - (j - vA[1]) * (i - vB[0]);
@@ -257,7 +198,15 @@ void triangle(const int width, const int height, TGAImage &framebuffer)
                 {
                     if (alpha > -0.01 && beta > -0.01 && gamma > -0.01 || alpha < 0.01 && beta < 0.01 && gamma < 0.01)
                     {
-                        framebuffer.set(i, j, back);
+                        //framebuffer.set(i, j, back);
+                        float k = 0;
+                        //for (int i = 0; i < 3; i++)
+                        k = (vA[2]) * alpha + (vB[2]) * beta + (vC[2]) * gamma;
+                        if (zbuffer[int(i + j * width)] < k)
+                        {
+                            zbuffer[int(i + j * width)] = k;
+                            framebuffer.set(i, j, back);
+                        }
                     }
                 }
             }
