@@ -10,7 +10,7 @@
 #endif
 
 using namespace std;
-vector<vector<float>> v, f;
+vector<vector<float>> v,vt,vn, f;
 void line(int x0, int y0, int x1, int y1, TGAImage &image, TGAColor color)
 {
     bool steep = false;
@@ -54,10 +54,6 @@ void parserfile(const int width, const int height, TGAImage framebuffer)
     std::ifstream myfile;
     myfile.open("main.obj");
     std::string myline;
-    float tableautVecteur[3][2048];
-    float tableauFace[3][4096];
-    int nbVecteur = 0;
-    int nbFace = 0;
     if (myfile.is_open())
     {
         while (myfile)
@@ -78,10 +74,36 @@ void parserfile(const int width, const int height, TGAImage framebuffer)
                     myline.erase(0, pos + delimiter.length());
                     temp.push_back(std::stof(token));
                     // std::cout << temp.at(i) << std::endl;
-                    // tableautVecteur[i][nbVecteur] = std::stof(token);
                 }
                 v.push_back(temp);
-                nbVecteur++;
+            }
+
+            if (myline.substr(0, 4) == "vt  ")
+            {
+                myline = myline.substr(4);
+                for (int i = 0; i <= 1; i++)
+                {
+                    pos = myline.find(delimiter);
+                    token = myline.substr(0, pos);
+                    myline.erase(0, pos + delimiter.length());
+                    temp.push_back(std::stof(token));
+                    //std::cout << temp.at(i) << std::endl;
+                }
+                vt.push_back(temp);
+            }
+
+            if (myline.substr(0, 4) == "vn  ")
+            {
+                myline = myline.substr(4);
+                for (int i = 0; i <= 1; i++)
+                {
+                    pos = myline.find(delimiter);
+                    token = myline.substr(0, pos);
+                    myline.erase(0, pos + delimiter.length());
+                    temp.push_back(std::stof(token));
+                    //std::cout << temp.at(i) << std::endl;
+                }
+                vn.push_back(temp);
             }
 
             if (myline.substr(0, 2) == "f ")
@@ -93,81 +115,59 @@ void parserfile(const int width, const int height, TGAImage framebuffer)
                     pos = tempoLine.find(delimiter);
                     token = tempoLine.substr(0, pos);
                     tempoLine.erase(0, pos + delimiter.length());
-                    // Séparer de la ligne f en fonction des / et prise en compte uniquement de la première v[a]eur
+                    // Séparer de la ligne f en fonction des / et prise en compte uniquement de la première valeur
                     pos = tempoLine.find(delimiter2);
                     token = tempoLine.substr(0, pos);
-                    temp.push_back(std::stof(token));
-                    // tableauFace[i][nbFace] = std::stof(token);
-                    // std::cout << tableauFace[i][nbFace] << std::endl;
+                    temp.push_back(std::stof(token)); //Insère la valeur dans f
+                    // Prise en compte de chaque 2e valeur dans f
+                    tempoLine = tempoLine.substr(pos+1);
+                    pos = tempoLine.find(delimiter2);
+                    token = tempoLine.substr(0, pos);
+                    temp.push_back(std::stof(token)); //Insère la valeur dans f
+                    // Prise en compte de chaque 3e valeur dans f
+                    tempoLine = tempoLine.substr(pos+1);
+                    pos = tempoLine.find(delimiter2);
+                    token = tempoLine.substr(0, pos);
+                    temp.push_back(std::stof(token)); //Insère la valeur dans f
                 }
                 f.push_back(temp);
-                nbFace++;
             }
         }
     }
 }
 
-void rasterize(vector<int> vA, vector<int> vB, TGAImage &framebuffer, TGAColor color, int ybuffer[])
-{
-    /*vector<float> bboxmin(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
-    vector<float> bboxmax(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
-    vector<int> taille(framebuffer.get_width() - 1, framebuffer.get_height() - 1);
-    for (int i = 0; i < 3; i++)
-    {
-        for (int j = 0; j < 2; j++)
-        {
-            bboxmin[j] = std::max(0.f, std::min(bboxmin[j], pts[i][j]));
-            bboxmax[j] = std::min(clamp[j], std::max(bboxmax[j], pts[i][j]));
-        }
-    }
-    vector<float> P;
-    for (P.x = bboxmin[0]; P.x <= bboxmax[0]; P.x++)
-    {
-        for (P.y = bboxmin.y; P.y <= bboxmax.y; P.y++)
-        {
-            Vec3f bc_screen = barycentric(pts[0], pts[1], pts[2], P);
-            if (bc_screen.x < 0 || bc_screen.y < 0 || bc_screen.z < 0)
-                continue;
-            P.z = 0;
-            for (int i = 0; i < 3; i++)
-                P.z += pts[i][2] * bc_screen[i];
-            if (zbuffer[int(P.x + P.y * width)] < P.z)
-            {
-                zbuffer[int(P.x + P.y * width)] = P.z;
-                image.set(P.x, P.y, color);
-            }
-        }
-    }*/
-}
 // Fonction dessinant les segments du triangle
-void triangle(const int width, const int height, TGAImage &framebuffer)
+void triangle(const int width, const int height, TGAImage &framebuffer, TGAImage &texture)
 {
-    float zbuffer[width*height];
-    for (int i = 0; i < width*height; i++)
+    float zbuffer[width * height];
+    for (int i = 0; i < width * height; i++)
     {
-        zbuffer[i] = -1;
+        zbuffer[i] = -1000;
     }
     const TGAColor white = {255, 255, 255, 255};
     const TGAColor blue = {0, 0, 255, 255};
     const TGAColor red = {255, 0, 0, 255};
     const TGAColor green = {0, 255, 0, 255};
-    /*vector<int> vA1 = {20, 34}, vA2 = {744, 400}, vB1 = {120, 434}, vB2 = {444, 400}, vC1 = {300, 463}, vC2 = {594, 200}, vD1 = {10, 10}, vD2 = {790, 10};
-    line(vA1[0], vA1[1], vA2[0], vA2[1], framebuffer, red);
-    line(vB1[0], vB1[1], vB2[0], vB2[1], framebuffer, blue);
-    line(vC1[0], vC1[1], vC2[0], vC2[1], framebuffer, green);
-    rasterize(vA1, vA2, framebuffer, red, ybuffer);
-    rasterize(vB1, vB2, framebuffer, blue, ybuffer);
-    rasterize(vC1, vC2, framebuffer, green, ybuffer);*/
     for (int h = 0; h <= f.size() - 1; h++)
     {
+        int widthTexture = texture.width();
+        int heigthTexture = texture.height();
         const TGAColor alea = {std::uint8_t(rand() % 255), std::uint8_t(rand() % 255), std::uint8_t(rand() % 255), 255};
         int a = f[h][0] - 1;
-        int b = f[h][1] - 1;
-        int c = f[h][2] - 1;
-
+        int b = f[h][3] - 1;
+        int c = f[h][6] - 1;        
+        int a2 = f[h][1] - 1;
+        int b2 = f[h][4] - 1;
+        int c2 = f[h][7] - 1;
         vector<int> vA = {static_cast<int>((v[a][0] + 1) * width / 2), static_cast<int>((v[a][1] + 1) * height / 2)}; // Coordonnées x et y du premier sommet du triangle
         vector<int> vB = {static_cast<int>((v[b][0] + 1) * width / 2), static_cast<int>((v[b][1] + 1) * height / 2)};
         vector<int> vC = {static_cast<int>((v[c][0] + 1) * width / 2), static_cast<int>((v[c][1] + 1) * height / 2)};
+        //vector<int> vtA = {static_cast<int>((vt[a][0] + 1) * widthTexture / 2), static_cast<int>((vt[a][1] + 1) * heigthTexture / 2)};
+        //vector<int> vtB = {static_cast<int>((vt[b][0] + 1) * widthTexture / 2), static_cast<int>((vt[b][1] + 1) * heigthTexture / 2)};
+        //vector<int> vtC = {static_cast<int>((vt[c][0] + 1) * widthTexture / 2), static_cast<int>((vt[c][1] + 1) * heigthTexture / 2)};
+        vector<float> vtA = {static_cast<float>(vt[a2][0]), static_cast<float>(vt[a2][1])};
+        vector<float> vtB = {static_cast<float>(vt[b2][0]), static_cast<float>(vt[b2][1])};
+        vector<float> vtC = {static_cast<float>(vt[c2][0]), static_cast<float>(vt[c2][1])};
         // Co du centre de gravité du triangle
         vector<int> vAB = {vA[0] - vB[0], vA[1] - vB[1]}, vBC = {vB[0] - vC[0], vB[1] - vC[1]}, vAC = {vA[0] - vC[0], vA[1] - vC[1]};
         // Vecteurs pour la lumière
@@ -194,18 +194,27 @@ void triangle(const int width, const int height, TGAImage &framebuffer)
                 float alpha = (i - vB[0]) * (j - vC[1]) - (j - vB[1]) * (i - vC[0]);
                 float beta = (i - vC[0]) * (j - vA[1]) - (j - vC[1]) * (i - vA[0]);
                 float gamma = (i - vA[0]) * (j - vB[1]) - (j - vA[1]) * (i - vB[0]);
+                float tot = alpha + beta + gamma;
+                alpha /= tot;
+                beta /= tot;
+                gamma /= tot;
+                widthTexture = (vtA[0]*alpha + vtB[0]*beta + vtC[0]*gamma)*texture.width();
+                heigthTexture = (1- (vtA[1]*alpha + vtB[1]*beta + vtC[1]*gamma))*texture.height();
+                TGAColor color = texture.get(widthTexture,heigthTexture);
+                //std::cout << " vtA[0] "<< vtA[0] << " alpha "<< alpha << " vtB[0] "<< vtB[0] << " beta "<< beta <<  " vtC[0] "<< vtC[0] << " gamma "<< gamma << std::endl;
+              //  std::cout << "w " << widthTexture << " h " << heigthTexture << std::endl;
                 if (scalaireNLim < 0)
                 {
-                    if (alpha > -0.01 && beta > -0.01 && gamma > -0.01 || alpha < 0.01 && beta < 0.01 && gamma < 0.01)
+                    if (alpha > -0.01 && beta > -0.01 && gamma > -0.01)
                     {
-                        //framebuffer.set(i, j, back);
                         float k = 0;
-                        //for (int i = 0; i < 3; i++)
-                        k = (vA[2]) * alpha + (vB[2]) * beta + (vC[2]) * gamma;
+                        k = (v[a][2]) * alpha + (v[b][2]) * beta + (v[c][2]) * gamma;
+                        //std::cerr << k << " " << std::endl;
                         if (zbuffer[int(i + j * width)] < k)
                         {
+                            //std::cout << "w " << widthTexture << " h " << heigthTexture << std::endl;
                             zbuffer[int(i + j * width)] = k;
-                            framebuffer.set(i, j, back);
+                            framebuffer.set(i, j, color);
                         }
                     }
                 }
@@ -218,13 +227,12 @@ int main()
 {
     constexpr int width = 1024;
     constexpr int height = 980;
-    const TGAColor white = {255, 255, 255, 255};
-    const TGAColor red = {0, 0, 255, 255};
-    const TGAColor blue = {255, 0, 0, 255};
-    const TGAColor green = {0, 255, 0, 255};
     TGAImage framebuffer(width, height, TGAImage::RGB);
+    TGAImage texture(width, height, TGAImage::RGB);
+    //char test = texture.read_tga_file("texture.tga");
+    texture.read_tga_file("texture.tga");
     parserfile(width, height, framebuffer);
-    triangle(width, height, framebuffer);
+    triangle(width, height, framebuffer, texture);
     framebuffer.write_tga_file("framebuffer.tga");
     return 0;
 }
