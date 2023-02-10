@@ -12,7 +12,8 @@
 
 using namespace std;
 vector<vector<float>> v,vt,vn, f;
-vector<float> camera = {0,0,-3};
+vector<float> camera = {0,0,3};
+
 Matrix mTempo(vector<float> v){
     Matrix identite = Matrix::identity(4);
     Matrix mTempo;
@@ -20,9 +21,8 @@ Matrix mTempo(vector<float> v){
     mTempo[1][0] = v[1];
     mTempo[2][0] = v[2];
     mTempo[3][0] = 1.0;
-    identite[3][2] = static_cast<float>(1.0/camera[2]);
+    identite[3][2] = static_cast<float>(-1.0/camera[2]);
     mTempo = identite*mTempo;
-    //std::cout << "A " <<m1[3][0] << std::endl;
     return mTempo;
 }
 
@@ -30,27 +30,12 @@ vector<float> resize(const int width, const int height, Matrix m)
 {
     int w = width / 2;
     int h = height / 2;
-    float vx = (m[0][0] * w) + w;
-    float vy = (m[1][0] * h) + h;
+    float vx = (m[0][0] * w*0.9) + w;
+    float vy = (m[1][0] * h*0.9) + h;
     float vz = m[2][0];
     vector<float> v = {vx,vy,vz};
     return v;
 }
-
-/*
-Matrix m2(vector<float> camera, Matrix m1, Matrix identite){
-    //Matrix m2 = Matrix::identity(4);
-    
-    
-    Matrix m3;
-    m3[0][0]= m2[0][0]*m1[0][0];
-    m3[1][0]= m2[1][1]*m1[1][0];
-    m3[2][0]= m2[2][2]*m1[2][0];
-    m3[3][0]= m2[3][2]*m1[2][0]+m2[3][3]*m1[3][0];
-    std::cout << "A " <<m2[3][2]*m1[2][0] << std::endl;
-    //m1 = m1 * identite;
-    return m1;
-}*/
 
 Matrix m(Matrix mTempo){
     Matrix m;
@@ -195,8 +180,8 @@ void triangle(const int width, const int height,TGAImage &framebuffer, TGAImage 
     }
 
     const TGAColor white = {255, 255, 255, 255};
-    const TGAColor blue = {0, 0, 255, 255};
-    const TGAColor red = {255, 0, 0, 255};
+    const TGAColor red = {0, 0, 255, 255};
+    const TGAColor blue = {255, 0, 0, 255};
     const TGAColor green = {0, 255, 0, 255};
     for (int h = 0; h <= f.size() - 1; h++)
     {
@@ -206,41 +191,34 @@ void triangle(const int width, const int height,TGAImage &framebuffer, TGAImage 
         int a = f[h][0] - 1;
         int b = f[h][3] - 1;
         int c = f[h][6] - 1;        
-        int a2 = f[h][1] - 1;
-        int b2 = f[h][4] - 1;
-        int c2 = f[h][7] - 1;
+        int at = f[h][1] - 1;
+        int bt = f[h][4] - 1;
+        int ct = f[h][7] - 1;
 
-        vector<float> vmTempomA = {static_cast<float>(v[a][0]), static_cast<float>(v[a][1]), static_cast<float>(v[a][2])};
-        vector<float> vmTempomB = {static_cast<float>(v[b][0]), static_cast<float>(v[b][1]), static_cast<float>(v[b][2])};
-        vector<float> vmTempomC = {static_cast<float>(v[c][0]), static_cast<float>(v[c][1]), static_cast<float>(v[c][2])};
-        Matrix mA1 = mTempo(vmTempomA);
-        Matrix mB1 = mTempo(vmTempomB);
-        Matrix mC1 = mTempo(vmTempomC);
-        //Matrix mA2 = m2(camera,mA1);
-        //Matrix mB2 = m2(camera,mB1);
-        //Matrix mC2 = m2(camera,mC1);
-        Matrix mA = m(mA1);
-        Matrix mB = m(mB1);
-        Matrix mC = m(mC1);
-        //std::cout << mA[2][0]<<std::endl;
+        vector<float> vmTempomA = {v[a][0], v[a][1], v[a][2]};
+        vector<float> vmTempomB = {v[b][0], v[b][1], v[b][2]};
+        vector<float> vmTempomC = {v[c][0], v[c][1], v[c][2]};
+        Matrix mTempoA = mTempo(vmTempomA);
+        Matrix mTempoB = mTempo(vmTempomB);
+        Matrix mTempoC = mTempo(vmTempomC);
+        Matrix mA = m(mTempoA);
+        Matrix mB = m(mTempoB);
+        Matrix mC = m(mTempoC);
         vector<float> vmA = resize(width,height,mA);
         vector<float> vmB = resize(width,height,mB);
-        vector<float> vmC = resize(width,height,mC);
-        //vector<float> vmAA = {static_cast<float>((mA[0][0]+1) * width / 2), static_cast<float>((mA[1][0]+1) * height / 2), static_cast<float>(mA[2][0])};
-        //vector<float> vmBB = {static_cast<float>((mB[0][0]+1) * width / 2), static_cast<float>((mB[1][0]+1) * height / 2), static_cast<float>(mB[2][0])};
-        //vector<float> vmCC = {static_cast<float>((mC[0][0]+1) * width / 2), static_cast<float>((mC[1][0]+1) * height / 2), static_cast<float>(mC[2][0])};      
-        //std::cout << "vmA " << vmA[0] << std::endl;
+        vector<float> vmC = resize(width,height,mC);    
+
         //Vecteur pour les textures
 
-        vector<float> vTextureA = {static_cast<float>(vt[a2][0]), static_cast<float>(vt[a2][1])};
-        vector<float> vTextureB = {static_cast<float>(vt[b2][0]), static_cast<float>(vt[b2][1])};
-        vector<float> vTextureC = {static_cast<float>(vt[c2][0]), static_cast<float>(vt[c2][1])};
+        vector<float> vTextureA = {vt[at][0], vt[at][1]};
+        vector<float> vTextureB = {vt[bt][0], vt[bt][1]};
+        vector<float> vTextureC = {vt[ct][0], vt[ct][1]};
 
         // Co du centre de gravité du triangle
         
-        vector<float> N = {static_cast<float>(vmB[1] - vmA[1]) * (vmC[2] - vmA[2]) - (vmB[2] - vmA[2]) * (vmC[1] - vmA[1]),
-                           -static_cast<float>(vmB[0] - vmA[0]) * (vmC[2] - vmA[2]) + (vmB[2] - vmA[2]) * (vmC[0] - vmA[0]),
-                           static_cast<float>(vmB[0] - vmA[0]) * (vmC[1] - vmA[1]) - (vmB[1] - vmA[1]) * (vmC[0] - vmA[0])};
+        vector<float> N = {(vmB[1] - vmA[1]) * (vmC[2] - vmA[2]) - (vmB[2] - vmA[2]) * (vmC[1] - vmA[1]),
+                           -(vmB[0] - vmA[0]) * (vmC[2] - vmA[2]) + (vmB[2] - vmA[2]) * (vmC[0] - vmA[0]),
+                           (vmB[0] - vmA[0]) * (vmC[1] - vmA[1]) - (vmB[1] - vmA[1]) * (vmC[0] - vmA[0])};
         
         // Vecteurs pour la lumière
 
@@ -296,7 +274,6 @@ int main()
     constexpr int height = 1024;
     TGAImage framebuffer(width, height, TGAImage::RGB);
     TGAImage texture(width, height, TGAImage::RGB);
-    //char test = texture.read_tga_file("texture.tga");
     texture.read_tga_file("texture.tga");
     parserfile(framebuffer);
     triangle(width, height, framebuffer, texture);
